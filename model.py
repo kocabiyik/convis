@@ -25,74 +25,61 @@ class LeNet5(nn.Module):
         self.fc1 = nn.Linear(120, 84)
         self.tanh4 = nn.Tanh()
         self.fc2 = nn.Linear(84, num_classes)
-        
-        # Feature maps storage (only used in eval mode)
-        self._feature_maps = {}
+
     
     def forward(self, x):
         # Only store features in eval mode
-        store_features = not self.training
-        
-        if store_features:
-            self._feature_maps.clear()
-            self._feature_maps['input'] = x.detach().clone()
-        
         x = self.conv1(x)
-        if store_features: self._feature_maps['conv1'] = x.detach().clone()
         x = self.tanh1(x)
         x = self.pool1(x)
-        if store_features: self._feature_maps['pool1'] = x.detach().clone()
         
         x = self.conv2(x)
-        if store_features: self._feature_maps['conv2'] = x.detach().clone()
         x = self.tanh2(x)
         x = self.pool2(x)
-        if store_features: self._feature_maps['pool2'] = x.detach().clone()
         
         x = self.conv3(x)
-        if store_features: self._feature_maps['conv3'] = x.detach().clone()
         x = self.tanh3(x)
         
         x = torch.flatten(x, 1)
-        if store_features: self._feature_maps['flatten'] = x.detach().clone()
         
         x = self.fc1(x)
-        if store_features: self._feature_maps['fc1'] = x.detach().clone()
         x = self.tanh4(x)
         
         x = self.fc2(x)
-        if store_features: self._feature_maps['output'] = x.detach().clone()
         
         return x
-    
-    def get_feature_maps(self):
-        """Returns stored feature maps if in eval mode, None otherwise"""
-        if self.training:
-            return None
-        return self._feature_maps
-    
-    def clear_feature_maps(self):
-        """Clears the stored feature maps"""
-        self._feature_maps.clear()
 
-def visualize_feature_maps(model, test_loader, device, num_samples=1):
-    """Helper function to visualize feature maps"""
-    model.eval()  # Ensure we're in eval mode
-    
-    # Get one batch of data
-    data_iter = iter(test_loader)
-    images, labels = next(data_iter)
-    images = images.to(device)
-    
-    # Forward pass to capture features
-    with torch.no_grad():
-        _ = model(images[:num_samples])  # Process only a few samples
-    
-    # Retrieve and return feature maps
-    feature_maps = model.get_feature_maps()
-    model.clear_feature_maps()
-    
-    return feature_maps, images[:num_samples], labels[:num_samples]
+    def get_feature_maps(self, x):
+        """Returns stored feature maps for a given input"""
+        feature_maps = {}
+        x = self.conv1(x)
+        feature_maps['conv1'] = x.detach().clone()
+        x = self.tanh1(x)
+        x = self.pool1(x)
+        feature_maps['pool1'] = x.detach().clone()
+
+        x = self.conv2(x)
+        feature_maps['conv2'] = x.detach().clone()
+        x = self.tanh2(x)
+        x = self.pool2(x)
+        feature_maps['pool2'] = x.detach().clone()
+
+        x = self.conv3(x)
+        feature_maps['conv3'] = x.detach().clone()
+        x = self.tanh3(x)
+        
+        x = torch.flatten(x, 1)
+        feature_maps['flatten'] = x.detach().clone()
+
+        x = self.fc1(x)
+        feature_maps['fc1'] = x.detach().clone()
+        x = self.tanh4(x)
+
+        x = self.fc2(x)
+        feature_maps['fc2'] = x.detach().clone()
+
+        return feature_maps
+        
 
 
 def train(model, device, train_loader, optimizer, criterion, epoch):
@@ -192,18 +179,7 @@ def main():
             torch.save(model.state_dict(), 'lenet5_best.pth')
     
     print(f'Best Test Accuracy: {best_acc:.2f}%')
-    
-    # Example visualization usage
-    print("\nCapturing feature maps for visualization...")
-    feature_maps, sample_images, sample_labels = visualize_feature_maps(
-        model, test_loader, device, num_samples=3
-    )
-    
-    # feature_maps now contains all intermediate representations
-    # sample_images and sample_labels contain the corresponding inputs
-    print("Available feature maps:", list(feature_maps.keys()))
-    print("Sample images shape:", sample_images.shape)
-    print("Sample labels:", sample_labels)
+  
 
 if __name__ == '__main__':
     main()
